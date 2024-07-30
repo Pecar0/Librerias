@@ -16,16 +16,23 @@ function Functions.IncreaseWalkSpeed()
 end
 
 function Functions.KillAll()
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    if not character then return end
+
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
     local players = game.Players:GetPlayers()
+
     for _, targetPlayer in ipairs(players) do
-        if targetPlayer ~= player then
-            local character = targetPlayer.Character
-            if character then
-                local humanoid = character:FindFirstChildOfClass("Humanoid")
-                if humanoid then
-                    humanoid.Health = 0
-                end
-            end
+        if targetPlayer ~= player and targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+            local targetRootPart = targetPlayer.Character.HumanoidRootPart
+            
+            -- Teletransportar al jugador objetivo frente al jugador local
+            local offset = humanoidRootPart.CFrame.LookVector * 10 -- Ajusta la distancia según sea necesario
+            targetRootPart.CFrame = humanoidRootPart.CFrame + offset
+            
+            -- Desactivar la física para mantener la posición fija
+            targetRootPart.Anchored = true
         end
     end
 end
@@ -55,82 +62,51 @@ function Functions.KillAllV2(stateTable)
     end
 end
 
-function Functions.RainbowBody()
-    local character = player.Character or player.CharacterAdded:Wait()
-    local colors = {Color3.fromRGB(255, 0, 0), Color3.fromRGB(255, 127, 0), Color3.fromRGB(255, 255, 0), Color3.fromRGB(0, 255, 0), Color3.fromRGB(0, 0, 255), Color3.fromRGB(75, 0, 130), Color3.fromRGB(148, 0, 211)}
-    local index = 1
+function Functions.RainbowBody(stateTable)
+    local character = player.Character
+    if not character then return end
 
-    -- Hacer el cuerpo del jugador invisible
-    for _, part in ipairs(character:GetChildren()) do
+    -- Desactivar la visibilidad del personaje
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.Health = 0 -- Hace al jugador invisible
+    end
+
+    -- Limpiar los objetos del personaje que se usan para efectos
+    for _, part in pairs(character:GetChildren()) do
         if part:IsA("BasePart") then
-            part.Material = Enum.Material.SmoothPlastic
-            part.BrickColor = BrickColor.new(Color3.fromRGB(0, 0, 0))
+            -- Establecer la transparencia del cuerpo
             part.Transparency = 1
+            
+            -- Crear una apariencia de arcoíris con partículas
+            local rainbowTrail = Instance.new("ParticleEmitter", part)
+            rainbowTrail.Color = ColorSequence.new({Color3.fromRGB(255, 0, 0), Color3.fromRGB(255, 127, 0), Color3.fromRGB(255, 255, 0), Color3.fromRGB(0, 255, 0), Color3.fromRGB(0, 0, 255), Color3.fromRGB(75, 0, 130), Color3.fromRGB(148, 0, 211)})
+            rainbowTrail.LightEmission = 1
+            rainbowTrail.Size = NumberSequence.new(1, 0)
+            rainbowTrail.Lifetime = NumberRange.new(1, 2)
+            rainbowTrail.Rate = 100
         end
     end
 
-    -- Crear efectos de trazos de colores
-    while true do
-        for _, part in ipairs(character:GetChildren()) do
-            if part:IsA("BasePart") then
-                -- Crear una nueva parte para el trazo arcoíris
-                local tracePart = Instance.new("Part")
-                tracePart.Size = part.Size
-                tracePart.Position = part.Position
-                tracePart.Anchored = true
-                tracePart.CanCollide = false
-                tracePart.Material = Enum.Material.Neon
-                tracePart.BrickColor = BrickColor.new(colors[index])
-                tracePart.Transparency = 0.5
-                tracePart.CFrame = part.CFrame
-                tracePart.Parent = workspace
+    -- Añadir efectos de iluminación
+    local light = Instance.new("PointLight", character:FindFirstChildOfClass("HumanoidRootPart"))
+    light.Color = Color3.fromRGB(255, 255, 255)
+    light.Brightness = 2
+    light.Range = 20
 
-                -- Crear una animación para el trazo
-                local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, true)
-                local goal = {Color = colors[index]}
-                local tween = TweenService:Create(tracePart, tweenInfo, goal)
-                tween:Play()
-            end
-        end
-        index = index % #colors + 1
-        wait(0.5)
-    end
+    -- Establecer el estado del efecto
+    stateTable["RainbowBody"] = not stateTable["RainbowBody"]
 end
 
-function Functions.AutoClicker()
-    local tool = player.Backpack:FindFirstChildOfClass("Tool")
-    if not tool then
-        return -- No hay herramienta, salir de la función
-    end
-
-    while true do
-        if tool then
-            -- Activar la herramienta automáticamente
-            tool:Activate()
-        end
-        wait(0.1) -- Esperar un breve período antes de hacer clic nuevamente
-    end
-end
-
-function Functions.AutoPetBug(stateTable)
-    local humanoidRootPart = player.Character:WaitForChild("HumanoidRootPart")
-    humanoidRootPart.CFrame = CFrame.new(-677.4024658203125, 14.215564727783203, -206.73135375976562)
-    player.Character.HumanoidRootPart.Anchored = true
-    wait(1)
-    player.Character.HumanoidRootPart.Anchored = false
-
-    local tool = player.Backpack:FindFirstChildOfClass("Tool")
-    if tool then
-        player.Character.Humanoid:EquipTool(tool)
-    end
-
-    local autoClick = false
+function Functions.AutoClicker(stateTable)
+    local autoClick = stateTable["AutoClicker"]
     local clickConnection
 
     local function startAutoClick()
         if autoClick then
-            clickConnection = RunService.RenderStepped:Connect(function()
-                tool:Activate()
+            clickConnection = game:GetService("RunService").RenderStepped:Connect(function()
+                mouse1click()
+                wait(0.01) -- Velocidad de clic
             end)
         end
     end
@@ -141,8 +117,53 @@ function Functions.AutoPetBug(stateTable)
         end
     end
 
-    autoClick = not autoClick
-    if autoClick then
+    stateTable["AutoClicker"] = not autoClick
+    if stateTable["AutoClicker"] then
+        startAutoClick()
+    else
+        stopAutoClick()
+    end
+end
+
+function Functions.AutoPetBug(stateTable)
+    local character = player.Character
+    if not character then return end
+    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+    
+    -- Teletransportar a la ubicación deseada
+    humanoidRootPart.CFrame = CFrame.new(-677.4024658203125, 14.215564727783203, -206.73135375976562)
+    
+    -- Asegurarse de que el personaje no esté anclado
+    character.HumanoidRootPart.Anchored = false
+    
+    -- Encontrar el segundo objeto en el inventario (Backpack)
+    local tools = player.Backpack:GetChildren()
+    local secondTool = tools[2] -- Asumimos que el segundo objeto es la herramienta deseada
+    if secondTool and secondTool:IsA("Tool") then
+        character.Humanoid:EquipTool(secondTool)
+    end
+
+    local autoClick = stateTable["AutoPetBug"]
+    local clickConnection
+
+    local function startAutoClick()
+        if autoClick then
+            clickConnection = game:GetService("RunService").RenderStepped:Connect(function()
+                if secondTool then
+                    secondTool:Activate()
+                end
+            end)
+        end
+    end
+
+    local function stopAutoClick()
+        if clickConnection then
+            clickConnection:Disconnect()
+        end
+    end
+
+    stateTable["AutoPetBug"] = not autoClick
+    if stateTable["AutoPetBug"] then
         startAutoClick()
     else
         stopAutoClick()
