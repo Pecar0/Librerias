@@ -2,31 +2,41 @@ local Functions = {}
 
 local player = game.Players.LocalPlayer
 local mouse = player:GetMouse()
+local UserInputService = game:GetService("UserInputService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
 function Functions.IncreaseWalkSpeed()
     local character = player.Character or player.CharacterAdded:Wait()
-    character.Humanoid.WalkSpeed = character.Humanoid.WalkSpeed == 120 and 16 or 120
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.WalkSpeed = humanoid.WalkSpeed == 120 and 16 or 120
+    end
 end
 
 function Functions.KillAll()
     local players = game.Players:GetPlayers()
     for _, targetPlayer in ipairs(players) do
         if targetPlayer ~= player then
-            -- Lógica para matar al jugador objetivo
-            targetPlayer.Character:BreakJoints()
+            local character = targetPlayer.Character
+            if character then
+                local humanoid = character:FindFirstChildOfClass("Humanoid")
+                if humanoid then
+                    humanoid.Health = 0
+                end
+            end
         end
     end
 end
 
 function Functions.KillAllV2(stateTable)
     if stateTable["Kill All v2"] then
-        -- Lógica para activar Kill All v2
         local function teleportBehind(targetPlayer)
             local character = player.Character
-            local rootPart = character:WaitForChild("HumanoidRootPart")
+            local rootPart = character and character:FindFirstChild("HumanoidRootPart")
             local targetRootPart = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-
-            if targetRootPart then
+            if rootPart and targetRootPart then
                 rootPart.CFrame = targetRootPart.CFrame * CFrame.new(0, 0, 5)
             end
         end
@@ -41,7 +51,6 @@ function Functions.KillAllV2(stateTable)
             wait(1) -- Esperar 1 segundo antes de teleportar de nuevo
         end
     else
-        -- Lógica para desactivar Kill All v2
         print("Kill All v2 desactivado")
     end
 end
@@ -51,11 +60,36 @@ function Functions.RainbowBody()
     local colors = {Color3.fromRGB(255, 0, 0), Color3.fromRGB(255, 127, 0), Color3.fromRGB(255, 255, 0), Color3.fromRGB(0, 255, 0), Color3.fromRGB(0, 0, 255), Color3.fromRGB(75, 0, 130), Color3.fromRGB(148, 0, 211)}
     local index = 1
 
+    -- Hacer el cuerpo del jugador invisible
+    for _, part in ipairs(character:GetChildren()) do
+        if part:IsA("BasePart") then
+            part.Material = Enum.Material.SmoothPlastic
+            part.BrickColor = BrickColor.new(Color3.fromRGB(0, 0, 0))
+            part.Transparency = 1
+        end
+    end
+
+    -- Crear efectos de trazos de colores
     while true do
         for _, part in ipairs(character:GetChildren()) do
             if part:IsA("BasePart") then
-                part.BrickColor = BrickColor.new(colors[index])
-                part.Material = Enum.Material.Neon
+                -- Crear una nueva parte para el trazo arcoíris
+                local tracePart = Instance.new("Part")
+                tracePart.Size = part.Size
+                tracePart.Position = part.Position
+                tracePart.Anchored = true
+                tracePart.CanCollide = false
+                tracePart.Material = Enum.Material.Neon
+                tracePart.BrickColor = BrickColor.new(colors[index])
+                tracePart.Transparency = 0.5
+                tracePart.CFrame = part.CFrame
+                tracePart.Parent = workspace
+
+                -- Crear una animación para el trazo
+                local tweenInfo = TweenInfo.new(1, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1, true)
+                local goal = {Color = colors[index]}
+                local tween = TweenService:Create(tracePart, tweenInfo, goal)
+                tween:Play()
             end
         end
         index = index % #colors + 1
@@ -63,20 +97,18 @@ function Functions.RainbowBody()
     end
 end
 
-function Functions.AutoClicker(stateTable)
-    local autoClickerActive = true
-
-    local function autoClick()
-        while autoClickerActive do
-            mousemoveabs(50, 50, 50)
-            mouse1click()
-            wait(0.1)
-        end
+function Functions.AutoClicker()
+    local tool = player.Backpack:FindFirstChildOfClass("Tool")
+    if not tool then
+        return -- No hay herramienta, salir de la función
     end
 
-    autoClickerActive = not autoClickerActive
-    if autoClickerActive then
-        spawn(autoClick)
+    while true do
+        if tool then
+            -- Activar la herramienta automáticamente
+            tool:Activate()
+        end
+        wait(0.1) -- Esperar un breve período antes de hacer clic nuevamente
     end
 end
 
@@ -92,12 +124,12 @@ function Functions.AutoPetBug(stateTable)
         player.Character.Humanoid:EquipTool(tool)
     end
 
-    local autoClick = true
+    local autoClick = false
     local clickConnection
 
     local function startAutoClick()
         if autoClick then
-            clickConnection = game:GetService("RunService").RenderStepped:Connect(function()
+            clickConnection = RunService.RenderStepped:Connect(function()
                 tool:Activate()
             end)
         end
