@@ -63,20 +63,57 @@ function Functions.RainbowBody()
     end
 end
 
-function Functions.AutoClicker()
-    while true do
-        if UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton1) then
+function Functions.AutoClicker(stateTable)
+    local autoClickerActive = true
+
+    local function autoClick()
+        while autoClickerActive do
+            mousemoveabs(50, 50, 50)
             mouse1click()
+            wait(0.1)
         end
-        wait(0.1)
+    end
+
+    autoClickerActive = not autoClickerActive
+    if autoClickerActive then
+        spawn(autoClick)
     end
 end
 
-function Functions.AutoPetBug()
-    local remote = game:GetService("ReplicatedStorage"):WaitForChild("PetRemote")
-    while true do
-        remote:FireServer("AutoPet")
-        wait(1)
+function Functions.AutoPetBug(stateTable)
+    local humanoidRootPart = player.Character:WaitForChild("HumanoidRootPart")
+    humanoidRootPart.CFrame = CFrame.new(-677.4024658203125, 14.215564727783203, -206.73135375976562)
+    player.Character.HumanoidRootPart.Anchored = true
+    wait(1)
+    player.Character.HumanoidRootPart.Anchored = false
+
+    local tool = player.Backpack:FindFirstChildOfClass("Tool")
+    if tool then
+        player.Character.Humanoid:EquipTool(tool)
+    end
+
+    local autoClick = true
+    local clickConnection
+
+    local function startAutoClick()
+        if autoClick then
+            clickConnection = game:GetService("RunService").RenderStepped:Connect(function()
+                tool:Activate()
+            end)
+        end
+    end
+
+    local function stopAutoClick()
+        if clickConnection then
+            clickConnection:Disconnect()
+        end
+    end
+
+    autoClick = not autoClick
+    if autoClick then
+        startAutoClick()
+    else
+        stopAutoClick()
     end
 end
 
