@@ -1,18 +1,14 @@
+-- Funciones
+
 local Functions = {}
 
 local player = game.Players.LocalPlayer
 local mouse = player:GetMouse()
-local UserInputService = game:GetService("UserInputService")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
 
 function Functions.IncreaseWalkSpeed()
     local character = player.Character or player.CharacterAdded:Wait()
-    local humanoid = character:FindFirstChildOfClass("Humanoid")
-    if humanoid then
-        humanoid.WalkSpeed = humanoid.WalkSpeed == 120 and 16 or 120
-    end
+    character.Humanoid.WalkSpeed = character.Humanoid.WalkSpeed == 120 and 16 or 120
+    Functions:Notify("Walk Speed " .. (character.Humanoid.WalkSpeed == 120 and "Increased" or "Reset"))
 end
 
 function Functions.KillAll()
@@ -28,38 +24,14 @@ function Functions.KillAll()
             local targetRootPart = targetPlayer.Character.HumanoidRootPart
             
             -- Teletransportar al jugador objetivo frente al jugador local
-            local offset = humanoidRootPart.CFrame.LookVector * 10 -- Ajusta la distancia según sea necesario
+            local offset = humanoidRootPart.CFrame.LookVector * 10
             targetRootPart.CFrame = humanoidRootPart.CFrame + offset
             
             -- Desactivar la física para mantener la posición fija
             targetRootPart.Anchored = true
         end
     end
-end
-
-function Functions.KillAllV2(stateTable)
-    if stateTable["Kill All v2"] then
-        local function teleportBehind(targetPlayer)
-            local character = player.Character
-            local rootPart = character and character:FindFirstChild("HumanoidRootPart")
-            local targetRootPart = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if rootPart and targetRootPart then
-                rootPart.CFrame = targetRootPart.CFrame * CFrame.new(0, 0, 5)
-            end
-        end
-
-        while stateTable["Kill All v2"] do
-            local players = game.Players:GetPlayers()
-            for _, targetPlayer in ipairs(players) do
-                if targetPlayer ~= player then
-                    teleportBehind(targetPlayer)
-                end
-            end
-            wait(1) -- Esperar 1 segundo antes de teleportar de nuevo
-        end
-    else
-        print("Kill All v2 desactivado")
-    end
+    Functions:Notify("All players teleported")
 end
 
 function Functions.RainbowBody(stateTable)
@@ -69,7 +41,7 @@ function Functions.RainbowBody(stateTable)
     -- Desactivar la visibilidad del personaje
     local humanoid = character:FindFirstChildOfClass("Humanoid")
     if humanoid then
-        humanoid.Health = 0 -- Hace al jugador invisible
+        humanoid.Health = 0
     end
 
     -- Limpiar los objetos del personaje que se usan para efectos
@@ -98,59 +70,26 @@ function Functions.RainbowBody(stateTable)
     stateTable["RainbowBody"] = not stateTable["RainbowBody"]
 end
 
-function Functions.AutoClicker(stateTable)
-    local autoClick = stateTable["AutoClicker"]
-    local clickConnection
-
-    local function startAutoClick()
-        if autoClick then
-            clickConnection = game:GetService("RunService").RenderStepped:Connect(function()
-                mouse1click()
-                wait(0.01) -- Velocidad de clic
-            end)
-        end
-    end
-
-    local function stopAutoClick()
-        if clickConnection then
-            clickConnection:Disconnect()
-        end
-    end
-
-    stateTable["AutoClicker"] = not autoClick
-    if stateTable["AutoClicker"] then
-        startAutoClick()
-    else
-        stopAutoClick()
-    end
-end
-
 function Functions.AutoPetBug(stateTable)
-    local character = player.Character
-    if not character then return end
-    local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
-    
-    -- Teletransportar a la ubicación deseada
+    local humanoidRootPart = player.Character:WaitForChild("HumanoidRootPart")
     humanoidRootPart.CFrame = CFrame.new(-677.4024658203125, 14.215564727783203, -206.73135375976562)
-    
-    -- Asegurarse de que el personaje no esté anclado
-    character.HumanoidRootPart.Anchored = false
-    
-    -- Encontrar el segundo objeto en el inventario (Backpack)
-    local tools = player.Backpack:GetChildren()
-    local secondTool = tools[2] -- Asumimos que el segundo objeto es la herramienta deseada
-    if secondTool and secondTool:IsA("Tool") then
-        character.Humanoid:EquipTool(secondTool)
+    player.Character.HumanoidRootPart.Anchored = true
+    wait(1)
+    player.Character.HumanoidRootPart.Anchored = false
+
+    local tool = player.Backpack:FindFirstChildOfClass("Tool")
+    if tool then
+        player.Character.Humanoid:EquipTool(tool)
     end
 
-    local autoClick = stateTable["AutoPetBug"]
+    local autoClick = true
     local clickConnection
 
     local function startAutoClick()
         if autoClick then
             clickConnection = game:GetService("RunService").RenderStepped:Connect(function()
-                if secondTool then
-                    secondTool:Activate()
+                if tool then
+                    tool:Activate()
                 end
             end)
         end
@@ -162,12 +101,74 @@ function Functions.AutoPetBug(stateTable)
         end
     end
 
-    stateTable["AutoPetBug"] = not autoClick
-    if stateTable["AutoPetBug"] then
+    autoClick = not autoClick
+    if autoClick then
         startAutoClick()
     else
         stopAutoClick()
     end
+
+    Functions:Notify("Auto Pet Bug " .. (autoClick and "Started" or "Stopped"))
+end
+
+function Functions.AutoClicker(stateTable)
+    local autoClick = true
+    local clickConnection
+
+    local function startAutoClick()
+        if autoClick then
+            clickConnection = game:GetService("RunService").RenderStepped:Connect(function()
+                mouse1click()
+            end)
+        end
+    end
+
+    local function stopAutoClick()
+        if clickConnection then
+            clickConnection:Disconnect()
+        end
+    end
+
+    autoClick = not autoClick
+    if autoClick then
+        startAutoClick()
+    else
+        stopAutoClick()
+    end
+
+    Functions:Notify("Auto Clicker " .. (autoClick and "Started" or "Stopped"))
+end
+
+function Functions:Notify(message)
+    local player = game.Players.LocalPlayer
+    local notification = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+    local frame = Instance.new("Frame", notification)
+    frame.Size = UDim2.new(0, 200, 0, 50)
+    frame.Position = UDim2.new(0.5, -100, 0, 20)
+    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    frame.BackgroundTransparency = 0.5
+    frame.BorderSizePixel = 0
+
+    local textLabel = Instance.new("TextLabel", frame)
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Text = message
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.TextSize = 18
+    textLabel.TextStrokeTransparency = 0.5
+
+    -- Animación de aparición
+    frame.Position = UDim2.new(0.5, -100, 0, -60)
+    local tween = TweenService:Create(frame, TweenInfo.new(0.5), {Position = UDim2.new(0.5, -100, 0, 20)})
+    tween:Play()
+
+    -- Desaparecer después de un tiempo
+    wait(3)
+    local tweenOut = TweenService:Create(frame, TweenInfo.new(0.5), {Position = UDim2.new(0.5, -100, 0, -60)})
+    tweenOut:Play()
+    tweenOut.Completed:Connect(function()
+        notification:Destroy()
+    end)
 end
 
 return Functions
